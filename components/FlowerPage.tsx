@@ -5,36 +5,44 @@ interface FlowerPageProps {
   emotion: 'tenderness' | 'contentment' | 'growth' | 'warmth' | 'tranquility';
   poem: string;
   transcript?: string;
-  onClose: () => void;
+  flowerImage?: string;  // AI-generated flower image (base64 data URL)
+  onSave?: () => void;
+  onReturn: () => void;
 }
 
-const FlowerPage: React.FC<FlowerPageProps> = ({ emotion, poem, transcript, onClose }) => {
-  // Emotion configurations
+const FlowerPage: React.FC<FlowerPageProps> = ({
+  emotion,
+  poem,
+  transcript,
+  flowerImage,
+  onSave,
+  onReturn,
+}) => {
   const emotionConfig = {
     tenderness: {
-      name: 'Tenderness',
-      color: { primary: '#E8B4BC', secondary: '#F5C8D2' },
-      description: 'Love, care, and gentle feelings',
+      color: '#E8B4BC',
+      label: 'TENDERNESS',
+      description: 'gentle · loving · soft',
     },
     contentment: {
-      name: 'Contentment',
-      color: { primary: '#D4A276', secondary: '#E6BE96' },
-      description: 'Satisfaction, peace, and gratitude',
+      color: '#D4A276',
+      label: 'CONTENTMENT',
+      description: 'peaceful · satisfied · calm',
     },
     growth: {
-      name: 'Growth',
-      color: { primary: '#8CA091', secondary: '#AABEAF' },
-      description: 'Hope, transformation, and learning',
+      color: '#4A5C50',
+      label: 'GROWTH',
+      description: 'evolving · learning · expanding',
     },
     warmth: {
-      name: 'Warmth',
-      color: { primary: '#F5C8AA', secondary: '#FFDCBE' },
-      description: 'Joy, connection, and comfort',
+      color: '#E8C4A8',
+      label: 'WARMTH',
+      description: 'joyful · connected · radiant',
     },
     tranquility: {
-      name: 'Tranquility',
-      color: { primary: '#B4BED2', secondary: '#C8D2E6' },
-      description: 'Stillness, serenity, and quiet',
+      color: '#A8B8C8',
+      label: 'TRANQUILITY',
+      description: 'serene · still · meditative',
     },
   };
 
@@ -42,159 +50,156 @@ const FlowerPage: React.FC<FlowerPageProps> = ({ emotion, poem, transcript, onCl
 
   return (
     <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{
+        background: `radial-gradient(circle at 50% 50%, ${config.color}20, ${config.color}05)`,
+      }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 1 }}
-      className="fixed inset-0 z-50 bg-[#F5E6D3] overflow-hidden"
     >
-      {/* Background gradient based on emotion */}
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          background: `radial-gradient(circle at center, ${config.color.primary} 0%, transparent 70%)`,
-        }}
-      />
-
-      {/* Decorative flower SVG - will be replaced with actual SVG */}
-      <motion.div
-        initial={{ scale: 0, rotate: -180, opacity: 0 }}
-        animate={{ scale: 1, rotate: 0, opacity: 0.15 }}
-        transition={{ duration: 2, ease: 'easeOut' }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-        style={{
-          width: '600px',
-          height: '600px',
-          filter: 'blur(40px)',
-        }}
-      >
-        <div
-          className="w-full h-full rounded-full"
-          style={{
-            background: `radial-gradient(circle, ${config.color.primary} 0%, ${config.color.secondary} 50%, transparent 70%)`,
-          }}
-        />
-      </motion.div>
-
-      {/* Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 py-12">
-        {/* Emotion badge */}
+      {/* AI-Generated Flower Background */}
+      {flowerImage && (
         <motion.div
-          initial={{ y: -20, opacity: 0 }}
+          className="absolute inset-0 flex items-end justify-center overflow-hidden"
+          initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
-          className="mb-8"
+          transition={{ duration: 1.5, ease: 'easeOut' }}
         >
-          <div
-            className="px-6 py-3 rounded-full text-sm font-light tracking-widest uppercase"
+          <motion.img
+            src={flowerImage}
+            alt={`${emotion} flower`}
+            className="h-[85vh] w-auto object-contain"
             style={{
-              background: `linear-gradient(135deg, ${config.color.primary}20, ${config.color.secondary}20)`,
-              color: config.color.primary,
-              border: `1px solid ${config.color.primary}40`,
+              filter: 'blur(8px) opacity(0.4)',
+              transform: 'translateY(5%)',
             }}
-          >
-            {config.name}
+            animate={{
+              filter: ['blur(8px) opacity(0.4)', 'blur(6px) opacity(0.5)', 'blur(8px) opacity(0.4)'],
+            }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          />
+        </motion.div>
+      )}
+
+      {/* Content Container */}
+      <motion.div
+        className="relative z-10 max-w-2xl mx-auto px-8 text-center"
+        initial={{ y: 30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.5, duration: 0.8 }}
+      >
+        {/* Emotion Badge */}
+        <motion.div
+          className="inline-block px-8 py-3 rounded-full border mb-8"
+          style={{
+            borderColor: config.color,
+            color: config.color,
+            backgroundColor: `${config.color}15`,
+          }}
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.7, duration: 0.5 }}
+        >
+          <div className="text-sm font-light tracking-[0.3em] uppercase">
+            {config.label}
           </div>
         </motion.div>
 
         {/* Poem */}
         <motion.div
+          className="text-3xl md:text-4xl font-serif leading-relaxed mb-8"
+          style={{ color: config.color }}
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-          className="max-w-2xl text-center mb-12"
+          transition={{ delay: 0.9, duration: 0.8 }}
         >
-          <p
-            className="text-2xl md:text-3xl font-light leading-relaxed whitespace-pre-line"
-            style={{ color: '#5a524c' }}
-          >
-            {poem}
-          </p>
+          {poem.split('\n').map((line, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9 + index * 0.15, duration: 0.5 }}
+            >
+              {line}
+            </motion.div>
+          ))}
         </motion.div>
 
-        {/* Optional: Show transcript */}
+        {/* Transcript (if available) */}
         {transcript && (
           <motion.div
+            className="text-sm font-light italic mb-12 opacity-60"
+            style={{ color: config.color }}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 0.8 }}
-            className="max-w-xl text-center mb-8 opacity-50"
+            animate={{ opacity: 0.6 }}
+            transition={{ delay: 1.5, duration: 0.8 }}
           >
-            <p className="text-sm font-light italic" style={{ color: '#5a524c' }}>
-              "{transcript}"
-            </p>
+            "{transcript}"
           </motion.div>
         )}
 
-        {/* Action buttons */}
+        {/* Buttons */}
         <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 1.2, duration: 0.8 }}
-          className="flex gap-4 mt-8"
+          className="flex gap-4 justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.7, duration: 0.5 }}
         >
-          {/* Save button (future feature) */}
+          {onSave && (
+            <button
+              onClick={onSave}
+              className="px-8 py-3 rounded-full border transition-all"
+              style={{
+                borderColor: config.color,
+                color: config.color,
+                backgroundColor: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = `${config.color}20`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              Save
+            </button>
+          )}
           <button
-            className="px-8 py-3 rounded-full font-light tracking-wider transition-all duration-300"
+            onClick={onReturn}
+            className="px-8 py-3 rounded-full border transition-all"
             style={{
-              background: `linear-gradient(135deg, ${config.color.primary}30, ${config.color.secondary}30)`,
-              color: config.color.primary,
-              border: `1px solid ${config.color.primary}60`,
+              borderColor: config.color,
+              color: config.color,
+              backgroundColor: 'transparent',
             }}
-            onClick={() => {
-              // TODO: Save functionality
-              console.log('Save clicked');
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = `${config.color}20`;
             }}
-          >
-            Save
-          </button>
-
-          {/* Return to garden */}
-          <button
-            className="px-8 py-3 rounded-full font-light tracking-wider transition-all duration-300 hover:bg-[#d9d4cc]/30"
-            style={{
-              color: '#5a524c',
-              border: '1px solid #5a524c40',
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
             }}
-            onClick={onClose}
           >
             Return to Garden
           </button>
         </motion.div>
 
-        {/* Subtle instruction */}
-        <motion.p
+        {/* Subtitle */}
+        <motion.div
+          className="text-xs font-light tracking-widest mt-12 opacity-40"
+          style={{ color: config.color }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 1 }}
-          className="mt-12 text-xs font-light tracking-wider opacity-30"
-          style={{ color: '#5a524c' }}
+          animate={{ opacity: 0.4 }}
+          transition={{ delay: 2, duration: 0.8 }}
         >
           Your feelings have bloomed into words
-        </motion.p>
-      </div>
-
-      {/* Close button (top right) */}
-      <button
-        onClick={onClose}
-        className="absolute top-6 right-6 z-20 text-[#5a524c] p-3 rounded-full hover:bg-[#d9d4cc]/30 transition-colors duration-300 opacity-50 hover:opacity-100"
-        aria-label="Close"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
+        </motion.div>
+      </motion.div>
     </motion.div>
   );
 };
