@@ -52,6 +52,9 @@ const BubbleGradient: React.FC<BubbleGradientProps> = ({
   const layer2Scale = isRecording ? 1 + (audioLevel * 0.25) : 1;
   const layer3Scale = isRecording ? 1 + (audioLevel * 0.35) : 1;
 
+  // Progress: 0 to 1 over 30 seconds
+  const progress = Math.min(recordingDuration / 30, 1);
+
   return (
     <div
       style={{
@@ -175,24 +178,58 @@ const BubbleGradient: React.FC<BubbleGradientProps> = ({
           />
         </motion.div>
 
-        {/* Subtle outer glow during recording - no UI, just atmosphere */}
+        {/* LISTENING MODE ANIMATION */}
         {isRecording && (
-          <motion.div
-            className="absolute inset-0 rounded-full"
-            style={{
-              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ 
-              opacity: [0.2, 0.4 + (audioLevel * 0.3), 0.2],
-              scale: [1, 1.02, 1],
-            }}
-            transition={{ 
-              duration: 0.6,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          />
+          <>
+            {/* Breathing outer glow - shows "I'm listening" */}
+            <motion.div
+              className="absolute inset-0 rounded-full"
+              style={{
+                background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)',
+              }}
+              animate={{ 
+                opacity: [0.3, 0.6 + (audioLevel * 0.4), 0.3],
+                scale: [0.98, 1.02, 0.98],
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+            />
+
+            {/* Subtle progress ring - fills over 30 seconds */}
+            <motion.div
+              className="absolute inset-0 rounded-full"
+              style={{
+                background: `conic-gradient(
+                  rgba(255, 255, 255, 0.3) ${progress * 360}deg,
+                  transparent ${progress * 360}deg
+                )`,
+                WebkitMask: 'radial-gradient(circle, transparent 48%, black 48%, black 52%, transparent 52%)',
+                mask: 'radial-gradient(circle, transparent 48%, black 48%, black 52%, transparent 52%)',
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+            />
+
+            {/* Rhythmic pulse - indicates active listening state */}
+            <motion.div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full"
+              animate={{
+                scale: [1, 1.5, 1],
+                opacity: [0.4, 0.8, 0.4],
+              }}
+              transition={{
+                duration: 1.5,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+              style={{
+                filter: 'blur(2px)',
+              }}
+            />
+          </>
         )}
       </motion.div>
     </div>
