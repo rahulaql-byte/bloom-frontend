@@ -1,73 +1,58 @@
 // ============================================
-// GARDEN.TSX - CHANGES NEEDED FOR AI FLOWERS
+// COMPLETE GARDEN.TSX FIXES
 // ============================================
 
-// CHANGE #1: Update flowerData state type (around line 18)
-// ----------------------------------------------------------
+// FIX #1: Update BACKEND_URL (Line 43)
+// -------------------------------------
 
-// FROM:
-const [flowerData, setFlowerData] = useState<{
-  emotion: 'tenderness' | 'contentment' | 'growth' | 'warmth' | 'tranquility';
-  poem: string;
-  transcript?: string;
-} | null>(null);
+// CHANGE FROM:
+const BACKEND_URL = 'http://localhost:5000/api/analyze-voice';
 
-// TO:
-const [flowerData, setFlowerData] = useState<{
-  emotion: 'tenderness' | 'contentment' | 'growth' | 'warmth' | 'tranquility';
-  poem: string;
-  transcript?: string;
-  flowerImage?: string;  // ADD THIS LINE!
-} | null>(null);
+// CHANGE TO:
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL 
+  ? `${import.meta.env.VITE_BACKEND_URL}/api/analyze-voice`
+  : 'https://bloom-backend-production-2d21.up.railway.app/api/analyze-voice';
 
 
-// CHANGE #2: Include flowerImage from backend response (around line 64)
-// ----------------------------------------------------------------------
+// FIX #2: Add handleReturnToGarden function (around line 100, after other handlers)
+// ---------------------------------------------------------------------------------
 
-// FROM:
-setFlowerData({
-  emotion: result.emotion,
-  poem: result.poem,
-  transcript: result.transcript,
-});
-
-// TO:
-setFlowerData({
-  emotion: result.emotion,
-  poem: result.poem,
-  transcript: result.transcript,
-  flowerImage: result.flower_image,  // ADD THIS LINE!
-});
+const handleReturnToGarden = () => {
+  setShowFlowerPage(false);
+  setFlowerData(null);
+};
 
 
-// CHANGE #3: Pass flowerImage to FlowerPage component (around line 400)
-// ---------------------------------------------------------------------
+// FIX #3: Update FlowerPage rendering (Line 404-411)
+// ---------------------------------------------------
 
-// FROM:
-<FlowerPage
-  emotion={flowerData.emotion}
-  poem={flowerData.poem}
-  transcript={flowerData.transcript}
-  onReturn={handleReturnToGarden}
-/>
+// CHANGE FROM:
+{showFlowerPage && flowerData && (
+  <FlowerPage
+    emotion={flowerData.emotion}
+    poem={flowerData.poem}
+    transcript={flowerData.transcript}
+    onClose={handleCloseFlowerPage}
+  />
+)}
 
-// TO:
-<FlowerPage
-  emotion={flowerData.emotion}
-  poem={flowerData.poem}
-  transcript={flowerData.transcript}
-  flowerImage={flowerData.flowerImage}  // ADD THIS LINE!
-  onReturn={handleReturnToGarden}
-/>
+// CHANGE TO:
+{showFlowerPage && flowerData && (
+  <FlowerPage
+    emotion={flowerData.emotion}
+    poem={flowerData.poem}
+    transcript={flowerData.transcript}
+    flowerImage={flowerData.flowerImage}
+    onReturn={handleReturnToGarden}
+  />
+)}
 
 
 // ============================================
-// THAT'S IT! Just 3 small changes!
+// SUMMARY OF CHANGES:
 // ============================================
-
-// After these changes:
-// 1. Backend generates AI flower
-// 2. Frontend receives it in response
-// 3. FlowerPage displays it as background
-// 4. Poem overlays on top of flower
+// 1. Fixed BACKEND_URL to use Railway
+// 2. Added handleReturnToGarden function
+// 3. Added flowerImage prop to FlowerPage
+// 4. Changed onClose to onReturn
 // ============================================
