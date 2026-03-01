@@ -40,7 +40,9 @@ const Garden: React.FC = () => {
       
       try {
         // TODO: Replace with your actual Replicate backend URL
-        const BACKEND_URL = 'http://localhost:5000/api/analyze-voice';
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL 
+  ? `${import.meta.env.VITE_BACKEND_URL}/api/analyze-voice`
+  : 'http://localhost:5000/api/analyze-voice';
         
         const formData = new FormData();
         formData.append('audio', audioBlob, 'recording.webm');
