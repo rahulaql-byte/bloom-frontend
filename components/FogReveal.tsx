@@ -13,13 +13,15 @@ const FogReveal: React.FC = () => {
   }>>([]);
   const lastFlowerTime = useRef(0);
 
-  // Warm color palette
+  // Warm vibrant color palette
   const flowerColors = [
     '#FF6B3D', // Vibrant orange
     '#FF8F5C', // Soft peach
     '#5DFFEB', // Bright cyan
     '#D4A276', // Warm tan
     '#6BA8A0', // Muted teal
+    '#FFB088', // Light peach
+    '#4DD8C8', // Turquoise
   ];
 
   // Organic noise for wobble
@@ -42,31 +44,60 @@ const FogReveal: React.FC = () => {
     resize();
     window.addEventListener('resize', resize);
 
-    // Create static grain texture once (not every frame!)
+    // Create hand-drawn style grain texture (irregular, clustered)
     const grainCanvas = document.createElement('canvas');
     grainCanvas.width = canvas.width;
     grainCanvas.height = canvas.height;
     const grainCtx = grainCanvas.getContext('2d');
     
     if (grainCtx) {
-      const grainData = grainCtx.createImageData(grainCanvas.width, grainCanvas.height);
-      const pixels = grainData.data;
+      grainCtx.fillStyle = 'transparent';
+      grainCtx.fillRect(0, 0, grainCanvas.width, grainCanvas.height);
       
-      for (let i = 0; i < pixels.length; i += 4) {
-        const noise = (Math.random() - 0.5) * 12; // SUBTLE grain (was 25!)
-        pixels[i] = noise + 30;     // R - add base brightness
-        pixels[i + 1] = noise + 25; // G
-        pixels[i + 2] = noise + 20; // B
-        pixels[i + 3] = 15;         // Very low opacity
+      // Hand-drawn grain: varying sizes, clusters, irregular spacing
+      const grainCount = (grainCanvas.width * grainCanvas.height) / 150; // More sparse
+      
+      for (let i = 0; i < grainCount; i++) {
+        const x = Math.random() * grainCanvas.width;
+        const y = Math.random() * grainCanvas.height;
+        
+        // Varying particle sizes (hand-drawn feel)
+        const size = Math.random() < 0.7 ? 1 : (Math.random() < 0.9 ? 2 : 3);
+        
+        // Varying opacity (not uniform)
+        const opacity = 0.1 + Math.random() * 0.3;
+        
+        // Warm tinted grain (not pure white)
+        const warmth = Math.random() * 30;
+        grainCtx.fillStyle = `rgba(${255 - warmth}, ${245 - warmth}, ${230 - warmth}, ${opacity})`;
+        
+        // Irregular shapes (not perfect squares)
+        if (Math.random() < 0.7) {
+          // Small dots
+          grainCtx.fillRect(x, y, size, size);
+        } else {
+          // Elongated marks (hand-drawn strokes)
+          grainCtx.fillRect(x, y, size, size + Math.random() * 2);
+        }
+        
+        // Create clusters (organic feel)
+        if (Math.random() < 0.3) {
+          const clusterSize = 2 + Math.floor(Math.random() * 3);
+          for (let j = 0; j < clusterSize; j++) {
+            const offsetX = x + (Math.random() - 0.5) * 5;
+            const offsetY = y + (Math.random() - 0.5) * 5;
+            const clusterOpacity = opacity * 0.6;
+            grainCtx.fillStyle = `rgba(255, 245, 230, ${clusterOpacity})`;
+            grainCtx.fillRect(offsetX, offsetY, 1, 1);
+          }
+        }
       }
-      
-      grainCtx.putImageData(grainData, 0, 0);
     }
 
     let animationFrame: number;
 
     const render = (time: number) => {
-      // Warm gradient background (morning fog feel)
+      // BRIGHTER warm gradient background
       const gradient = ctx.createRadialGradient(
         canvas.width / 2, 
         canvas.height / 2, 
@@ -76,16 +107,18 @@ const FogReveal: React.FC = () => {
         canvas.width * 0.7
       );
       
-      gradient.addColorStop(0, '#2a2010'); // Warm dark center
-      gradient.addColorStop(0.5, '#1a1510'); // Medium
-      gradient.addColorStop(1, '#120e0a'); // Darker edges (not pure black)
+      // Much lighter, warmer colors!
+      gradient.addColorStop(0, '#4a3528');   // Warm brown center (lighter!)
+      gradient.addColorStop(0.4, '#352820'); // Medium warm
+      gradient.addColorStop(0.7, '#251d18'); // Darker brown
+      gradient.addColorStop(1, '#1a1510');   // Darkest edges
       
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Apply SUBTLE static grain texture
+      // Apply hand-drawn grain texture
       if (grainCanvas) {
-        ctx.globalAlpha = 0.15; // Very subtle
+        ctx.globalAlpha = 0.4; // More visible grain
         ctx.drawImage(grainCanvas, 0, 0);
         ctx.globalAlpha = 1.0;
       }
@@ -107,20 +140,20 @@ const FogReveal: React.FC = () => {
         const x = flower.x + wobbleX;
         const y = flower.y + wobbleY;
 
-        // Multi-layer soft glow
-        const layers = 8;
+        // Multi-layer soft glow (more intense)
+        const layers = 10; // More layers = softer glow
         for (let layer = 0; layer < layers; layer++) {
-          const layerSize = flower.size * (1 + layer * 0.15);
-          const layerOpacity = currentOpacity * (1 - layer / layers) * 0.3;
+          const layerSize = flower.size * (1 + layer * 0.18);
+          const layerOpacity = currentOpacity * (1 - layer / layers) * 0.4; // More intense
 
           const gradient = ctx.createRadialGradient(x, y, 0, x, y, layerSize);
           
           const opacity = Math.max(0, layerOpacity);
           const opacityHex = Math.floor(opacity * 255).toString(16).padStart(2, '0');
-          const halfOpacityHex = Math.floor(opacity * 0.5 * 255).toString(16).padStart(2, '0');
+          const halfOpacityHex = Math.floor(opacity * 0.6 * 255).toString(16).padStart(2, '0');
           
           gradient.addColorStop(0, `${flower.color}${opacityHex}`);
-          gradient.addColorStop(0.5, `${flower.color}${halfOpacityHex}`);
+          gradient.addColorStop(0.4, `${flower.color}${halfOpacityHex}`);
           gradient.addColorStop(1, `${flower.color}00`);
 
           ctx.fillStyle = gradient;
@@ -132,17 +165,20 @@ const FogReveal: React.FC = () => {
           );
         }
 
-        // Add subtle grain particles within flower
-        for (let i = 0; i < 50; i++) { // Reduced from 80
-          const grainX = x + (Math.random() - 0.5) * flower.size * 2;
-          const grainY = y + (Math.random() - 0.5) * flower.size * 2;
-          const dist = Math.sqrt(Math.pow(grainX - x, 2) + Math.pow(grainY - y, 2));
+        // Hand-drawn grain particles within flower
+        const particleCount = 60;
+        for (let i = 0; i < particleCount; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const distance = Math.random() * flower.size;
+          const grainX = x + Math.cos(angle) * distance;
+          const grainY = y + Math.sin(angle) * distance;
           
-          if (dist < flower.size) {
-            const grainOpacity = (1 - dist / flower.size) * currentOpacity * 0.15; // More subtle
-            ctx.fillStyle = `rgba(255, 255, 255, ${grainOpacity})`;
-            ctx.fillRect(grainX, grainY, 1.5, 1.5); // Smaller particles
-          }
+          // Varying particle sizes
+          const particleSize = Math.random() < 0.8 ? 1 : 2;
+          
+          const grainOpacity = (1 - distance / flower.size) * currentOpacity * 0.2;
+          ctx.fillStyle = `rgba(255, 255, 255, ${grainOpacity})`;
+          ctx.fillRect(grainX, grainY, particleSize, particleSize);
         }
       });
 
@@ -160,7 +196,7 @@ const FogReveal: React.FC = () => {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const now = Date.now();
-      const interval = 150 + Math.random() * 100;
+      const interval = 150 + Math.random() * 100; // Irregular timing
       
       if (now - lastFlowerTime.current > interval) {
         const colorIndex = Math.floor(Math.random() * flowerColors.length);
@@ -171,8 +207,8 @@ const FogReveal: React.FC = () => {
             x: e.clientX + (Math.random() - 0.5) * 30,
             y: e.clientY + (Math.random() - 0.5) * 30,
             color: flowerColors[colorIndex],
-            size: 80 + Math.random() * 60,
-            opacity: 0.6 + Math.random() * 0.3,
+            size: 90 + Math.random() * 70, // Larger orbs
+            opacity: 0.7 + Math.random() * 0.3, // More visible
             timestamp: now,
           }
         ]);
@@ -202,9 +238,10 @@ const FogReveal: React.FC = () => {
       width: '100vw', 
       height: '100vh', 
       overflow: 'hidden',
-      background: 'radial-gradient(circle at 50% 50%, #2a2010, #120e0a)',
+      background: 'radial-gradient(circle at 50% 50%, #4a3528, #1a1510)',
+      cursor: 'crosshair',
     }}>
-      {/* Canvas with subtle grain */}
+      {/* Canvas with hand-drawn grain */}
       <canvas
         ref={canvasRef}
         style={{
@@ -217,98 +254,46 @@ const FogReveal: React.FC = () => {
         }}
       />
 
-      {/* Content */}
-      <motion.div
+      {/* Navigation hint (bottom center) */}
+      <motion.a
+        href="/garden"
         style={{
-          position: 'absolute',
-          top: '50%',
+          position: 'fixed',
+          bottom: '3rem',
           left: '50%',
-          transform: 'translate(-50%, -50%)',
-          textAlign: 'center',
+          transform: 'translateX(-50%)',
+          padding: '0.8rem 2.5rem',
+          border: '1px solid #D4A276',
+          borderRadius: '50px',
+          color: '#D4A276',
+          textDecoration: 'none',
+          fontSize: '0.9rem',
+          letterSpacing: '0.15em',
+          transition: 'none',
+          WebkitFontSmoothing: 'antialiased',
           zIndex: 10,
+          backgroundColor: 'rgba(26, 21, 16, 0.6)',
+          backdropFilter: 'blur(10px)',
         }}
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{
-          duration: 1.2,
-          ease: [0.25, 0.1, 0.25, 1],
+          delay: 1,
+          duration: 1.5,
+          ease: [0.33, 0.1, 0.33, 1],
+        }}
+        whileHover={{
+          backgroundColor: 'rgba(212, 162, 118, 0.2)',
+          scale: 1.05,
+          transition: { duration: 0.1, ease: "linear" }
+        }}
+        whileTap={{
+          scale: 0.98,
+          transition: { duration: 0.05 }
         }}
       >
-        {/* Title */}
-        <motion.h1
-          style={{
-            fontSize: 'clamp(3rem, 10vw, 6rem)',
-            fontWeight: 300,
-            letterSpacing: '0.1em',
-            color: '#E8C4A8',
-            margin: 0,
-            textShadow: '0 0 60px rgba(232, 196, 168, 0.3)',
-            WebkitFontSmoothing: 'antialiased',
-          }}
-          animate={{
-            opacity: [1, 0.95, 1, 0.97, 1],
-            scale: [1, 1.01, 1, 1.005, 1],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "linear",
-            times: [0, 0.3, 0.5, 0.8, 1],
-          }}
-        >
-          Bloom
-        </motion.h1>
-
-        {/* Subtitle */}
-        <motion.p
-          style={{
-            fontSize: 'clamp(1rem, 2vw, 1.2rem)',
-            fontWeight: 300,
-            letterSpacing: '0.2em',
-            color: '#D4A276',
-            marginTop: '2rem',
-            WebkitFontSmoothing: 'antialiased',
-          }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{
-            delay: 0.6,
-            duration: 1.5,
-            ease: [0.33, 0.1, 0.33, 1],
-          }}
-        >
-          your feelings, blooming into words
-        </motion.p>
-
-        {/* Enter link */}
-        <motion.a
-          href="/garden"
-          style={{
-            display: 'inline-block',
-            marginTop: '4rem',
-            padding: '1rem 3rem',
-            border: '1px solid #D4A276',
-            borderRadius: '50px',
-            color: '#D4A276',
-            textDecoration: 'none',
-            fontSize: '1rem',
-            letterSpacing: '0.15em',
-            transition: 'none',
-            WebkitFontSmoothing: 'antialiased',
-          }}
-          whileHover={{
-            backgroundColor: '#D4A27620',
-            scale: 1.05,
-            transition: { duration: 0.1, ease: "linear" }
-          }}
-          whileTap={{
-            scale: 0.98,
-            transition: { duration: 0.05 }
-          }}
-        >
-          enter the garden
-        </motion.a>
-      </motion.div>
+        enter the garden
+      </motion.a>
     </div>
   );
 };
