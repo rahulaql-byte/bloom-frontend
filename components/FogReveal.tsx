@@ -1,230 +1,328 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 
-interface FogRevealProps {
-  mousePosition: { x: number; y: number };
-}
+const FogReveal: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [hoveredFlowers, setHoveredFlowers] = useState<Array<{
+    x: number;
+    y: number;
+    color: string;
+    size: number;
+    opacity: number;
+    timestamp: number;
+  }>>([]);
+  const lastFlowerTime = useRef(0);
 
-interface Flower {
-  x: number;
-  y: number;
-  opacity: number;
-  id: number;
-  rotation: number;
-  type: number; // 0-4 for 5 flower types
-  scale: number;
-}
-
-const FogReveal: React.FC<FogRevealProps> = ({ mousePosition }) => {
-  const [flowers, setFlowers] = useState<Flower[]>([]);
-  const mouseStillTimeRef = useRef(0);
-  const lastMousePosRef = useRef({ x: 0, y: 0 });
-  const animationFrameRef = useRef<number>();
-
-  // 5 emotion-based flower colors (matching garden bubble palette)
+  // Warm grainy color palette from reference image
   const flowerColors = [
-    // Tenderness (pink from bubble) - MORE VIBRANT
-    { primary: 'rgba(232, 180, 188, 0.95)', secondary: 'rgba(245, 200, 210, 0.85)' },
-    // Contentment (brown/tan from bubble) - MORE VIBRANT
-    { primary: 'rgba(212, 162, 118, 0.95)', secondary: 'rgba(230, 190, 150, 0.85)' },
-    // Growth (green from bubble) - MORE VIBRANT
-    { primary: 'rgba(140, 160, 145, 0.95)', secondary: 'rgba(170, 190, 175, 0.85)' },
-    // Warmth (peachy orange) - MORE VIBRANT
-    { primary: 'rgba(245, 200, 170, 0.95)', secondary: 'rgba(255, 220, 190, 0.85)' },
-    // Tranquility (soft blue-grey) - MORE VIBRANT
-    { primary: 'rgba(180, 190, 210, 0.95)', secondary: 'rgba(200, 210, 230, 0.85)' },
+    '#FF6B3D', // Vibrant orange
+    '#FF8F5C', // Soft peach
+    '#5DFFEB', // Bright cyan
+    '#D4A276', // Warm tan
+    '#6BA8A0', // Muted teal
+    '#FFB088', // Light peach
+    '#4DD8C8', // Soft turquoise
   ];
 
-  useEffect(() => {
-    let lastUpdateTime = Date.now();
-    let lastFlowerPosition = { x: -1000, y: -1000 }; // Track last flower location
-
-    const checkMouseStill = () => {
-      const currentTime = Date.now();
-      const deltaTime = currentTime - lastUpdateTime;
-      lastUpdateTime = currentTime;
-
-      // Check if mouse moved
-      const distance = Math.sqrt(
-        Math.pow(mousePosition.x - lastMousePosRef.current.x, 2) + 
-        Math.pow(mousePosition.y - lastMousePosRef.current.y, 2)
-      );
-
-      // Check distance from last flower position
-      const distanceFromLastFlower = Math.sqrt(
-        Math.pow(mousePosition.x - lastFlowerPosition.x, 2) + 
-        Math.pow(mousePosition.y - lastFlowerPosition.y, 2)
-      );
-
-      if (distance < 5) {
-        // Mouse is still
-        mouseStillTimeRef.current += deltaTime;
-      } else {
-        // Mouse is moving - increment a different counter
-        mouseStillTimeRef.current += deltaTime * 0.5; // Slower accumulation while moving
-        lastMousePosRef.current = { ...mousePosition };
-      }
-
-      // Create flower when: (1) enough time passed AND (2) far enough from last flower
-      if (mouseStillTimeRef.current > 400 && distanceFromLastFlower > 150) {
-        console.log('🌸 Creating flower at:', mousePosition);
-        const newFlower: Flower = {
-          x: mousePosition.x,
-          y: mousePosition.y,
-          opacity: 0,
-          id: Date.now(),
-          rotation: Math.random() * 360,
-          type: Math.floor(Math.random() * 5),
-          scale: 0.8 + Math.random() * 0.4,
-        };
-        setFlowers(prev => {
-          const updated = [...prev, newFlower].slice(-5);
-          console.log('🌸 Total flowers:', updated.length);
-          return updated;
-        });
-        lastFlowerPosition = { ...mousePosition }; // Update last flower position
-        mouseStillTimeRef.current = 0;
-      }
-
-      animationFrameRef.current = requestAnimationFrame(checkMouseStill);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(checkMouseStill);
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [mousePosition.x, mousePosition.y]);
-
-  // Separate effect for fading flowers
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setFlowers(prev =>
-        prev
-          .map(f => ({
-            ...f,
-            // Slightly more visible: 0 → 0.7 (70% opacity!)
-            opacity: f.opacity < 0.7 ? f.opacity + 0.025 : f.opacity - 0.006,
-          }))
-          .filter(f => f.opacity > 0)
-      );
-    }, 50);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Render flower based on type
-  const renderFlower = (flower: Flower) => {
-    const colors = flowerColors[flower.type];
-    const size = 300 * flower.scale; // Bigger! Was 200
-
-    // Different flower shapes for each emotion
-    const flowerShapes = [
-      // Type 0: Round bloom (like image 2) - WITH FEATHER
-      <svg key={flower.id} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
-        <defs>
-          <radialGradient id={`grad-${flower.id}`}>
-            <stop offset="0%" stopColor={colors.primary} />
-            <stop offset="40%" stopColor={colors.secondary} />
-            <stop offset="70%" stopColor={colors.secondary} stopOpacity="0.5" />
-            <stop offset="85%" stopColor={colors.secondary} stopOpacity="0.2" />
-            <stop offset="100%" stopColor="transparent" />
-          </radialGradient>
-        </defs>
-        <circle cx="50" cy="50" r="40" fill={`url(#grad-${flower.id})`} filter="blur(8px)" />
-        <ellipse cx="50" cy="80" rx="8" ry="30" fill={colors.primary} opacity="0.9" filter="blur(3px)" />
-      </svg>,
-
-      // Type 1: Tulip-like - WITH FEATHER
-      <svg key={flower.id} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
-        <defs>
-          <radialGradient id={`grad-${flower.id}`}>
-            <stop offset="0%" stopColor={colors.primary} />
-            <stop offset="35%" stopColor={colors.secondary} />
-            <stop offset="65%" stopColor={colors.secondary} stopOpacity="0.5" />
-            <stop offset="85%" stopColor={colors.secondary} stopOpacity="0.2" />
-            <stop offset="100%" stopColor="transparent" />
-          </radialGradient>
-        </defs>
-        <ellipse cx="50" cy="40" rx="35" ry="30" fill={`url(#grad-${flower.id})`} filter="blur(8px)" />
-        <ellipse cx="50" cy="75" rx="6" ry="25" fill={colors.primary} opacity="0.9" filter="blur(3px)" />
-      </svg>,
-
-      // Type 2: Wide bloom - WITH FEATHER
-      <svg key={flower.id} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
-        <defs>
-          <radialGradient id={`grad-${flower.id}`}>
-            <stop offset="0%" stopColor={colors.primary} />
-            <stop offset="35%" stopColor={colors.secondary} />
-            <stop offset="65%" stopColor={colors.secondary} stopOpacity="0.5" />
-            <stop offset="85%" stopColor={colors.secondary} stopOpacity="0.2" />
-            <stop offset="100%" stopColor="transparent" />
-          </radialGradient>
-        </defs>
-        <ellipse cx="50" cy="45" rx="42" ry="28" fill={`url(#grad-${flower.id})`} filter="blur(8px)" />
-        <ellipse cx="50" cy="78" rx="7" ry="28" fill={colors.primary} opacity="0.9" filter="blur(3px)" />
-      </svg>,
-
-      // Type 3: Tall bloom - WITH FEATHER
-      <svg key={flower.id} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
-        <defs>
-          <radialGradient id={`grad-${flower.id}`}>
-            <stop offset="0%" stopColor={colors.primary} />
-            <stop offset="35%" stopColor={colors.secondary} />
-            <stop offset="65%" stopColor={colors.secondary} stopOpacity="0.5" />
-            <stop offset="85%" stopColor={colors.secondary} stopOpacity="0.2" />
-            <stop offset="100%" stopColor="transparent" />
-          </radialGradient>
-        </defs>
-        <ellipse cx="50" cy="38" rx="30" ry="35" fill={`url(#grad-${flower.id})`} filter="blur(8px)" />
-        <ellipse cx="50" cy="75" rx="6" ry="30" fill={colors.primary} opacity="0.9" filter="blur(3px)" />
-      </svg>,
-
-      // Type 4: Small delicate - WITH FEATHER
-      <svg key={flower.id} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
-        <defs>
-          <radialGradient id={`grad-${flower.id}`}>
-            <stop offset="0%" stopColor={colors.primary} />
-            <stop offset="40%" stopColor={colors.secondary} />
-            <stop offset="70%" stopColor={colors.secondary} stopOpacity="0.5" />
-            <stop offset="85%" stopColor={colors.secondary} stopOpacity="0.2" />
-            <stop offset="100%" stopColor="transparent" />
-          </radialGradient>
-        </defs>
-        <circle cx="50" cy="42" r="32" fill={`url(#grad-${flower.id})`} filter="blur(8px)" />
-        <ellipse cx="50" cy="78" rx="5" ry="28" fill={colors.primary} opacity="0.9" filter="blur(3px)" />
-      </svg>,
-    ];
-
-    return (
-      <div
-        key={flower.id}
-        className="absolute"
-        style={{
-          left: flower.x - size / 2,
-          top: flower.y - size / 2,
-          width: `${size}px`,
-          height: `${size}px`,
-          opacity: flower.opacity,
-          transform: `rotate(${flower.rotation}deg)`,
-          transition: 'opacity 1s ease-in-out',
-          pointerEvents: 'none',
-        }}
-      >
-        {flowerShapes[flower.type]}
-      </div>
-    );
+  // Organic noise for irregular, hand-drawn movement
+  const organicNoise = (x: number, y: number, time: number) => {
+    return Math.sin(x * 0.01 + time * 0.001) * 
+           Math.cos(y * 0.01 + time * 0.0015) * 20;
   };
 
-  return (
-    <div className="absolute inset-0 pointer-events-none">
-      {/* Debug indicator */}
-      <div className="absolute top-2 left-2 text-xs text-red-500 bg-white px-2 py-1 rounded z-50 pointer-events-auto">
-        FogReveal Active: {flowers.length} flowers
-      </div>
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    let animationFrame: number;
+    let lastGrainUpdate = 0;
+    const grainFPS = 30; // Update grain at 30fps for performance
+    const grainInterval = 1000 / grainFPS;
+
+    const render = (time: number) => {
+      // Fill with dark warm background
+      ctx.fillStyle = '#1a1510';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Add heavy grain texture (throttled for performance)
+      if (time - lastGrainUpdate > grainInterval) {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imageData.data;
+        
+        for (let i = 0; i < pixels.length; i += 4) {
+          const noise = (Math.random() - 0.5) * 25; // Heavy grain!
+          pixels[i] += noise;     // R
+          pixels[i + 1] += noise; // G
+          pixels[i + 2] += noise; // B
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        lastGrainUpdate = time;
+      }
+
+      // Draw grainy glowing flowers
+      hoveredFlowers.forEach((flower, index) => {
+        const age = time - flower.timestamp;
+        const maxAge = 5000;
+        
+        if (age > maxAge) return;
+
+        // Fade out over time
+        const fadeProgress = age / maxAge;
+        const currentOpacity = flower.opacity * (1 - fadeProgress);
+
+        // Organic irregular movement (hand-drawn wobble)
+        const wobbleX = organicNoise(flower.x, flower.y, time + index * 100);
+        const wobbleY = organicNoise(flower.y, flower.x, time + index * 150);
+        
+        const x = flower.x + wobbleX;
+        const y = flower.y + wobbleY;
+
+        // Draw multiple layers for grainy glow effect
+        const layers = 8;
+        for (let layer = 0; layer < layers; layer++) {
+          const layerSize = flower.size * (1 + layer * 0.15);
+          const layerOpacity = currentOpacity * (1 - layer / layers) * 0.3;
+
+          // Create soft radial gradient
+          const gradient = ctx.createRadialGradient(x, y, 0, x, y, layerSize);
+          
+          const opacity = Math.max(0, layerOpacity);
+          const opacityHex = Math.floor(opacity * 255).toString(16).padStart(2, '0');
+          const halfOpacityHex = Math.floor(opacity * 0.5 * 255).toString(16).padStart(2, '0');
+          
+          gradient.addColorStop(0, `${flower.color}${opacityHex}`);
+          gradient.addColorStop(0.5, `${flower.color}${halfOpacityHex}`);
+          gradient.addColorStop(1, `${flower.color}00`);
+
+          ctx.fillStyle = gradient;
+          ctx.fillRect(
+            x - layerSize,
+            y - layerSize,
+            layerSize * 2,
+            layerSize * 2
+          );
+        }
+
+        // Add grain particles within flower area
+        for (let i = 0; i < 80; i++) {
+          const grainX = x + (Math.random() - 0.5) * flower.size * 2;
+          const grainY = y + (Math.random() - 0.5) * flower.size * 2;
+          const dist = Math.sqrt(Math.pow(grainX - x, 2) + Math.pow(grainY - y, 2));
+          
+          if (dist < flower.size) {
+            const grainOpacity = (1 - dist / flower.size) * currentOpacity * 0.25;
+            ctx.fillStyle = `rgba(255, 255, 255, ${grainOpacity})`;
+            ctx.fillRect(grainX, grainY, 2, 2);
+          }
+        }
+      });
+
+      animationFrame = requestAnimationFrame(render);
+    };
+
+    animationFrame = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      window.removeEventListener('resize', resize);
+    };
+  }, [hoveredFlowers]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const now = Date.now();
       
-      {flowers.map(flower => renderFlower(flower))}
+      // Irregular timing - not perfectly spaced (hand-drawn feel)
+      const interval = 150 + Math.random() * 100; // 150-250ms
+      
+      if (now - lastFlowerTime.current > interval) {
+        const colorIndex = Math.floor(Math.random() * flowerColors.length);
+        
+        setHoveredFlowers(prev => [
+          ...prev.slice(-20), // Keep last 20 flowers
+          {
+            x: e.clientX + (Math.random() - 0.5) * 30, // Slight random offset
+            y: e.clientY + (Math.random() - 0.5) * 30,
+            color: flowerColors[colorIndex],
+            size: 80 + Math.random() * 60, // Varying sizes (80-140px)
+            opacity: 0.6 + Math.random() * 0.3, // Varying opacity
+            timestamp: now,
+          }
+        ]);
+        
+        lastFlowerTime.current = now;
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  // Clean up old flowers periodically
+  useEffect(() => {
+    const cleanup = setInterval(() => {
+      const now = Date.now();
+      setHoveredFlowers(prev => 
+        prev.filter(flower => now - flower.timestamp < 5000)
+      );
+    }, 1000);
+
+    return () => clearInterval(cleanup);
+  }, []);
+
+  return (
+    <div style={{ 
+      position: 'relative', 
+      width: '100vw', 
+      height: '100vh', 
+      overflow: 'hidden',
+      backgroundColor: '#1a1510',
+    }}>
+      {/* Grainy canvas layer */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Content with jagged animations */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          textAlign: 'center',
+          zIndex: 10,
+        }}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ 
+          opacity: 1, 
+          y: 0,
+        }}
+        transition={{
+          duration: 1.2,
+          ease: [0.25, 0.1, 0.25, 1], // Irregular easing (not smooth)
+        }}
+      >
+        {/* Title with hand-drawn irregular breathing */}
+        <motion.h1
+          style={{
+            fontSize: 'clamp(3rem, 10vw, 6rem)',
+            fontWeight: 300,
+            letterSpacing: '0.1em',
+            color: '#E8C4A8',
+            margin: 0,
+            filter: 'url(#grain)',
+            textShadow: '0 0 60px rgba(232, 196, 168, 0.3)',
+            WebkitFontSmoothing: 'antialiased',
+          }}
+          animate={{
+            // Irregular breathing (not perfect sine wave)
+            opacity: [1, 0.95, 1, 0.97, 1],
+            scale: [1, 1.01, 1, 1.005, 1],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: "linear", // No easing = more mechanical/organic
+            times: [0, 0.3, 0.5, 0.8, 1], // Irregular keyframes
+          }}
+        >
+          Bloom
+        </motion.h1>
+
+        {/* Subtitle with offset irregular timing */}
+        <motion.p
+          style={{
+            fontSize: 'clamp(1rem, 2vw, 1.2rem)',
+            fontWeight: 300,
+            letterSpacing: '0.2em',
+            color: '#D4A276',
+            marginTop: '2rem',
+            filter: 'url(#grain)',
+            WebkitFontSmoothing: 'antialiased',
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{
+            delay: 0.6,
+            duration: 1.5,
+            ease: [0.33, 0.1, 0.33, 1], // Irregular easing
+          }}
+        >
+          your feelings, blooming into words
+        </motion.p>
+
+        {/* Enter link with jagged hover (no smooth transition) */}
+        <motion.a
+          href="/garden"
+          style={{
+            display: 'inline-block',
+            marginTop: '4rem',
+            padding: '1rem 3rem',
+            border: '1px solid #D4A276',
+            borderRadius: '50px',
+            color: '#D4A276',
+            textDecoration: 'none',
+            fontSize: '1rem',
+            letterSpacing: '0.15em',
+            transition: 'none', // Remove smooth transitions
+            filter: 'url(#grain)',
+            WebkitFontSmoothing: 'antialiased',
+          }}
+          whileHover={{
+            backgroundColor: '#D4A27620',
+            scale: 1.05,
+            transition: { 
+              duration: 0.1, // Quick, not smooth
+              ease: "linear"
+            }
+          }}
+          whileTap={{
+            scale: 0.98,
+            transition: { duration: 0.05 }
+          }}
+        >
+          enter the garden
+        </motion.a>
+      </motion.div>
+
+      {/* SVG filter for grain texture on text */}
+      <svg style={{ position: 'fixed', width: 0, height: 0 }}>
+        <defs>
+          <filter id="grain">
+            <feTurbulence 
+              type="fractalNoise" 
+              baseFrequency="0.8" 
+              numOctaves="4" 
+              stitchTiles="stitch"
+            />
+            <feColorMatrix type="saturate" values="0" />
+            <feComponentTransfer>
+              <feFuncA type="discrete" tableValues="0 0 0 0 1 1 1" />
+            </feComponentTransfer>
+            <feBlend in="SourceGraphic" mode="soft-light" />
+          </filter>
+        </defs>
+      </svg>
     </div>
   );
 };
