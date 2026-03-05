@@ -1,26 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 
 interface FogRevealProps {
   mousePosition: { x: number; y: number };
 }
 
-interface Flower {
+interface WipePoint {
   x: number;
   y: number;
-  opacity: number;
-  id: number;
-  rotation: number;
-  type: number; // 0-4 for 5 flower types
-  scale: number;
+  timestamp: number;
+  radius: number;
 }
 
 const FogReveal: React.FC<FogRevealProps> = ({ mousePosition }) => {
-  const [flowers, setFlowers] = useState<Flower[]>([]);
-  const mouseStillTimeRef = useRef(0);
-  const lastMousePosRef = useRef({ x: 0, y: 0 });
+  const fogCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [wipePoints, setWipePoints] = useState<WipePoint[]>([]);
+  const lastMousePos = useRef({ x: 0, y: 0 });
   const animationFrameRef = useRef<number>();
 
-  // 5 emotion-based flower colors - MORE VIBRANT!
+  // Pre-placed flowers that exist underneath fog
+  const staticFlowers = [
+    { x: 20, y: 30, type: 0, rotation: 45, scale: 0.9 },
+    { x: 40, y: 60, type: 1, rotation: 120, scale: 1.1 },
+    { x: 70, y: 40, type: 2, rotation: 280, scale: 0.8 },
+    { x: 30, y: 80, type: 3, rotation: 15, scale: 1.0 },
+    { x: 80, y: 70, type: 4, rotation: 200, scale: 0.95 },
+    { x: 50, y: 50, type: 0, rotation: 90, scale: 1.05 },
+    { x: 15, y: 50, type: 1, rotation: 310, scale: 0.85 },
+    { x: 60, y: 20, type: 2, rotation: 170, scale: 0.9 },
+    { x: 85, y: 35, type: 3, rotation: 240, scale: 1.0 },
+    { x: 45, y: 75, type: 4, rotation: 60, scale: 0.95 },
+  ];
+
   const flowerColors = [
     { primary: 'rgba(232, 180, 188, 1.0)', secondary: 'rgba(245, 200, 210, 0.95)' },
     { primary: 'rgba(212, 162, 118, 1.0)', secondary: 'rgba(230, 190, 150, 0.95)' },
@@ -29,178 +39,219 @@ const FogReveal: React.FC<FogRevealProps> = ({ mousePosition }) => {
     { primary: 'rgba(180, 190, 210, 1.0)', secondary: 'rgba(200, 210, 230, 0.95)' },
   ];
 
+  // Track mouse movement for wiping effect
   useEffect(() => {
-    let lastUpdateTime = Date.now();
-    let lastFlowerPosition = { x: -1000, y: -1000 };
-
-    const checkMouseStill = () => {
-      const currentTime = Date.now();
-      const deltaTime = currentTime - lastUpdateTime;
-      lastUpdateTime = currentTime;
-
+    const handleMove = () => {
       const distance = Math.sqrt(
-        Math.pow(mousePosition.x - lastMousePosRef.current.x, 2) + 
-        Math.pow(mousePosition.y - lastMousePosRef.current.y, 2)
+        Math.pow(mousePosition.x - lastMousePos.current.x, 2) +
+        Math.pow(mousePosition.y - lastMousePos.current.y, 2)
       );
 
-      const distanceFromLastFlower = Math.sqrt(
-        Math.pow(mousePosition.x - lastFlowerPosition.x, 2) + 
-        Math.pow(mousePosition.y - lastFlowerPosition.y, 2)
-      );
-
-      if (distance < 5) {
-        mouseStillTimeRef.current += deltaTime;
-      } else {
-        mouseStillTimeRef.current += deltaTime * 0.5;
-        lastMousePosRef.current = { ...mousePosition };
-      }
-
-      // FASTER & CLOSER SPAWNING (was 400 & 150)
-      if (mouseStillTimeRef.current > 250 && distanceFromLastFlower > 100) {
-        console.log('🌸 Creating flower at:', mousePosition);
-        const newFlower: Flower = {
+      // Create wipe point every 20px of movement
+      if (distance > 20) {
+        const newWipe: WipePoint = {
           x: mousePosition.x,
           y: mousePosition.y,
-          opacity: 0,
-          id: Date.now(),
-          rotation: Math.random() * 360,
-          type: Math.floor(Math.random() * 5),
-          scale: 0.8 + Math.random() * 0.4,
+          timestamp: Date.now(),
+          radius: 80 + Math.random() * 40, // Varying wipe sizes
         };
-        setFlowers(prev => {
-          const updated = [...prev, newFlower].slice(-5);
-          console.log('🌸 Total flowers:', updated.length);
-          return updated;
-        });
-        lastFlowerPosition = { ...mousePosition };
-        mouseStillTimeRef.current = 0;
-      }
 
-      animationFrameRef.current = requestAnimationFrame(checkMouseStill);
+        setWipePoints(prev => [...prev, newWipe].slice(-50)); // Keep last 50 wipes
+        lastMousePos.current = { ...mousePosition };
+      }
     };
 
-    animationFrameRef.current = requestAnimationFrame(checkMouseStill);
+    handleMove();
+  }, [mousePosition.x, mousePosition.y]);
+
+  // Fade wipes over time (fog returns)
+  useEffect(() => {
+    const cleanup = setInterval(() => {
+      const now = Date.now();
+      setWipePoints(prev =>
+        prev.filter(wipe => now - wipe.timestamp < 8000) // Wipes fade after 8 seconds
+      );
+    }, 100);
+
+    return () => clearInterval(cleanup);
+  }, []);
+
+  // Render fog canvas with wipe holes
+  useEffect(() => {
+    const canvas = fogCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const render = () => {
+      const width = canvas.width;
+      const height = canvas.height;
+
+      // Clear and fill with fog
+      ctx.clearRect(0, 0, width, height);
+
+      // Create fog layer with grain texture
+      const gradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width * 0.7);
+      gradient.addColorStop(0, 'rgba(220, 230, 240, 0.95)'); // Light blue-white fog
+      gradient.addColorStop(0.5, 'rgba(230, 235, 245, 0.92)');
+      gradient.addColorStop(1, 'rgba(210, 220, 235, 0.98)');
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      // Add subtle grain to fog
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const pixels = imageData.data;
+
+      for (let i = 0; i < pixels.length; i += 4) {
+        const noise = (Math.random() - 0.5) * 15;
+        pixels[i] += noise;
+        pixels[i + 1] += noise;
+        pixels[i + 2] += noise;
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+
+      // Use destination-out to create holes (wipe away fog)
+      ctx.globalCompositeOperation = 'destination-out';
+
+      const now = Date.now();
+      wipePoints.forEach(wipe => {
+        const age = now - wipe.timestamp;
+        const maxAge = 8000;
+        const ageProgress = age / maxAge;
+
+        // Wipe starts strong, then fog returns (alpha decreases)
+        const alpha = 1 - ageProgress;
+
+        const gradient = ctx.createRadialGradient(wipe.x, wipe.y, 0, wipe.x, wipe.y, wipe.radius);
+        gradient.addColorStop(0, `rgba(0, 0, 0, ${alpha})`);
+        gradient.addColorStop(0.6, `rgba(0, 0, 0, ${alpha * 0.7})`);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(
+          wipe.x - wipe.radius,
+          wipe.y - wipe.radius,
+          wipe.radius * 2,
+          wipe.radius * 2
+        );
+      });
+
+      ctx.globalCompositeOperation = 'source-over';
+
+      animationFrameRef.current = requestAnimationFrame(render);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(render);
 
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [mousePosition.x, mousePosition.y]);
+  }, [wipePoints]);
 
-  // Separate effect for fading flowers - BRIGHTER!
+  // Resize canvas
   useEffect(() => {
-    const interval = setInterval(() => {
-      setFlowers(prev =>
-        prev
-          .map(f => ({
-            ...f,
-            // BRIGHTER: 0 → 0.9 (90% opacity!) and faster fade-in
-            opacity: f.opacity < 0.9 ? f.opacity + 0.03 : f.opacity - 0.006,
-          }))
-          .filter(f => f.opacity > 0)
-      );
-    }, 50);
+    const canvas = fogCanvasRef.current;
+    if (!canvas) return;
 
-    return () => clearInterval(interval);
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
   }, []);
 
-  // Render flower based on type
-  const renderFlower = (flower: Flower) => {
+  // Render flower SVG
+  const renderFlower = (flower: typeof staticFlowers[0], index: number) => {
     const colors = flowerColors[flower.type];
-    const size = 400 * flower.scale; // BIGGER! (was 300)
+    const size = 300 * flower.scale;
+    const x = (flower.x / 100) * (typeof window !== 'undefined' ? window.innerWidth : 1000);
+    const y = (flower.y / 100) * (typeof window !== 'undefined' ? window.innerHeight : 1000);
 
-    // Different flower shapes for each emotion
     const flowerShapes = [
-      // Type 0: Round bloom
-      <svg key={flower.id} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+      <svg key={index} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
         <defs>
-          <radialGradient id={`grad-${flower.id}`}>
+          <radialGradient id={`grad-${index}`}>
             <stop offset="0%" stopColor={colors.primary} />
             <stop offset="40%" stopColor={colors.secondary} />
             <stop offset="70%" stopColor={colors.secondary} stopOpacity="0.5" />
-            <stop offset="85%" stopColor={colors.secondary} stopOpacity="0.2" />
             <stop offset="100%" stopColor="transparent" />
           </radialGradient>
         </defs>
-        <circle cx="50" cy="50" r="40" fill={`url(#grad-${flower.id})`} filter="blur(8px)" />
+        <circle cx="50" cy="50" r="40" fill={`url(#grad-${index})`} filter="blur(8px)" />
         <ellipse cx="50" cy="80" rx="8" ry="30" fill={colors.primary} opacity="0.9" filter="blur(3px)" />
       </svg>,
 
-      // Type 1: Tulip-like
-      <svg key={flower.id} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+      <svg key={index} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
         <defs>
-          <radialGradient id={`grad-${flower.id}`}>
+          <radialGradient id={`grad-${index}`}>
             <stop offset="0%" stopColor={colors.primary} />
             <stop offset="35%" stopColor={colors.secondary} />
             <stop offset="65%" stopColor={colors.secondary} stopOpacity="0.5" />
-            <stop offset="85%" stopColor={colors.secondary} stopOpacity="0.2" />
             <stop offset="100%" stopColor="transparent" />
           </radialGradient>
         </defs>
-        <ellipse cx="50" cy="40" rx="35" ry="30" fill={`url(#grad-${flower.id})`} filter="blur(8px)" />
+        <ellipse cx="50" cy="40" rx="35" ry="30" fill={`url(#grad-${index})`} filter="blur(8px)" />
         <ellipse cx="50" cy="75" rx="6" ry="25" fill={colors.primary} opacity="0.9" filter="blur(3px)" />
       </svg>,
 
-      // Type 2: Wide bloom
-      <svg key={flower.id} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+      <svg key={index} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
         <defs>
-          <radialGradient id={`grad-${flower.id}`}>
+          <radialGradient id={`grad-${index}`}>
             <stop offset="0%" stopColor={colors.primary} />
             <stop offset="35%" stopColor={colors.secondary} />
             <stop offset="65%" stopColor={colors.secondary} stopOpacity="0.5" />
-            <stop offset="85%" stopColor={colors.secondary} stopOpacity="0.2" />
             <stop offset="100%" stopColor="transparent" />
           </radialGradient>
         </defs>
-        <ellipse cx="50" cy="45" rx="42" ry="28" fill={`url(#grad-${flower.id})`} filter="blur(8px)" />
+        <ellipse cx="50" cy="45" rx="42" ry="28" fill={`url(#grad-${index})`} filter="blur(8px)" />
         <ellipse cx="50" cy="78" rx="7" ry="28" fill={colors.primary} opacity="0.9" filter="blur(3px)" />
       </svg>,
 
-      // Type 3: Tall bloom
-      <svg key={flower.id} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+      <svg key={index} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
         <defs>
-          <radialGradient id={`grad-${flower.id}`}>
+          <radialGradient id={`grad-${index}`}>
             <stop offset="0%" stopColor={colors.primary} />
             <stop offset="35%" stopColor={colors.secondary} />
             <stop offset="65%" stopColor={colors.secondary} stopOpacity="0.5" />
-            <stop offset="85%" stopColor={colors.secondary} stopOpacity="0.2" />
             <stop offset="100%" stopColor="transparent" />
           </radialGradient>
         </defs>
-        <ellipse cx="50" cy="38" rx="30" ry="35" fill={`url(#grad-${flower.id})`} filter="blur(8px)" />
+        <ellipse cx="50" cy="38" rx="30" ry="35" fill={`url(#grad-${index})`} filter="blur(8px)" />
         <ellipse cx="50" cy="75" rx="6" ry="30" fill={colors.primary} opacity="0.9" filter="blur(3px)" />
       </svg>,
 
-      // Type 4: Small delicate
-      <svg key={flower.id} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+      <svg key={index} viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
         <defs>
-          <radialGradient id={`grad-${flower.id}`}>
+          <radialGradient id={`grad-${index}`}>
             <stop offset="0%" stopColor={colors.primary} />
             <stop offset="40%" stopColor={colors.secondary} />
             <stop offset="70%" stopColor={colors.secondary} stopOpacity="0.5" />
-            <stop offset="85%" stopColor={colors.secondary} stopOpacity="0.2" />
             <stop offset="100%" stopColor="transparent" />
           </radialGradient>
         </defs>
-        <circle cx="50" cy="42" r="32" fill={`url(#grad-${flower.id})`} filter="blur(8px)" />
+        <circle cx="50" cy="42" r="32" fill={`url(#grad-${index})`} filter="blur(8px)" />
         <ellipse cx="50" cy="78" rx="5" ry="28" fill={colors.primary} opacity="0.9" filter="blur(3px)" />
       </svg>,
     ];
 
     return (
       <div
-        key={flower.id}
-        className="absolute"
+        key={index}
+        className="absolute pointer-events-none"
         style={{
-          left: flower.x - size / 2,
-          top: flower.y - size / 2,
+          left: x - size / 2,
+          top: y - size / 2,
           width: `${size}px`,
           height: `${size}px`,
-          opacity: flower.opacity,
           transform: `rotate(${flower.rotation}deg)`,
-          transition: 'opacity 1s ease-in-out',
-          pointerEvents: 'none',
         }}
       >
         {flowerShapes[flower.type]}
@@ -210,7 +261,17 @@ const FogReveal: React.FC<FogRevealProps> = ({ mousePosition }) => {
 
   return (
     <div className="absolute inset-0 pointer-events-none">
-      {flowers.map(flower => renderFlower(flower))}
+      {/* Flowers layer (underneath fog) */}
+      <div className="absolute inset-0">
+        {staticFlowers.map((flower, index) => renderFlower(flower, index))}
+      </div>
+
+      {/* Fog layer (on top, with wipe holes) */}
+      <canvas
+        ref={fogCanvasRef}
+        className="absolute inset-0 pointer-events-none"
+        style={{ mixBlendMode: 'normal' }}
+      />
     </div>
   );
 };
