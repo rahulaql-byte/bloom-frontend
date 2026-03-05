@@ -287,7 +287,7 @@ const Garden: React.FC = () => {
           left: 0,
           width: '100%',
           height: '100%',
-          background: 'radial-gradient(circle at 50% 50%, #1a1510 0%, #0a0806 100%)',
+          background: 'linear-gradient(180deg, #b8c8d8 0%, #d8c4c8 40%, #e8d4c8 70%, #e8d0c4 100%)',
           zIndex: 0,
         }}
       />
