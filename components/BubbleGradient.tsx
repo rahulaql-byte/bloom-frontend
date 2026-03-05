@@ -1,268 +1,285 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useTransform, useAnimation } from 'framer-motion';
+import React, { useEffect } from 'react';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
+import React from 'react';
 
 interface BubbleGradientProps {
-  onBubbleClick: () => void;
-  isRecording: boolean;
-  recordingDuration: number;
-  audioLevel: number;
-}
-
-const BubbleGradient: React.FC<BubbleGradientProps> = ({
-  onBubbleClick,
-  isRecording,
-  recordingDuration,
-  audioLevel,
+onBubbleClick: () => void;
+@@ -16,7 +16,6 @@ const BubbleGradient: React.FC<BubbleGradientProps> = ({
 }) => {
-  const maxDuration = 30000; // 30 seconds
-  const progress = Math.min((recordingDuration / maxDuration) * 100, 100);
+const x = useMotionValue(225);
+const y = useMotionValue(225);
+  const controls = useAnimation();
 
-  // Smooth audio level for less jittery animation
-  const [smoothAudioLevel, setSmoothAudioLevel] = useState(0);
+const parallaxX1 = useTransform(x, [0, 450], [-15, 15]);
+const parallaxY1 = useTransform(y, [0, 450], [-15, 15]);
+@@ -27,16 +26,6 @@ const BubbleGradient: React.FC<BubbleGradientProps> = ({
+const parallaxX3 = useTransform(x, [0, 450], [-20, 20]);
+const parallaxY3 = useTransform(y, [0, 450], [20, -20]);
 
+  // Pulse animation based on audio level
   useEffect(() => {
-    // Smooth the audio level with exponential moving average
-    setSmoothAudioLevel(prev => prev * 0.7 + audioLevel * 0.3);
-  }, [audioLevel]);
+    if (isRecording && audioLevel > 0) {
+      controls.start({
+        scale: 1.08 + audioLevel * 0.05,
+        transition: { duration: 0.1 }
+      });
+    }
+  }, [audioLevel, isRecording, controls]);
 
-  // Voice-reactive values
-  const voiceScale = 1 + smoothAudioLevel * 0.15; // Scale ring 0-15% based on voice
-  const voiceGlow = 5 + smoothAudioLevel * 20; // Glow intensity
-  const ringThickness = 3 + smoothAudioLevel * 4; // Ring gets thicker when speaking (3-7px)
-  const ringOpacity = 0.6 + smoothAudioLevel * 0.3; // Ring gets brighter when speaking
+const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+const rect = event.currentTarget.getBoundingClientRect();
+x.set(event.clientX - rect.left);
+@@ -48,17 +37,20 @@ const BubbleGradient: React.FC<BubbleGradientProps> = ({
+y.set(225);
+};
 
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 100,
-        cursor: 'pointer',
-      }}
-      onClick={onBubbleClick}
-    >
-      {!isRecording ? (
-        // Bubble before recording
-        <motion.div
-          style={{
-            width: '200px',
-            height: '200px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle at 30% 40%, #E8B4BC 0%, #D4A276 40%, #8C9091 100%)',
-            filter: 'blur(40px)',
-            opacity: 0.8,
-          }}
+  const containerVariants = {
+    initial: { scale: 1 },
+    hover: { scale: 1.05 },
+    recording: { scale: 1.08 },
+  };
+  // Dynamic blur: increases with audio level (more abstract when listening)
+  const dynamicBlur = isRecording 
+    ? Math.max(12, 12 + audioLevel * 25) // 12-37px blur based on audio
+    : 8;
+  
+  // Dynamic scale: bubble pulses with audio
+  const bubbleScale = isRecording
+    ? 1.08 + (audioLevel * 0.2) // Grows with audio
+    : 1;
+
+  const blurVariants = {
+    initial: { filter: 'blur(8px)' },
+    hover: { filter: 'blur(4px)' },
+    recording: { filter: 'blur(6px)' },
+  };
+  // Each layer reacts differently to audio
+  const layer1Scale = isRecording ? 1 + (audioLevel * 0.3) : 1;
+  const layer2Scale = isRecording ? 1 + (audioLevel * 0.25) : 1;
+  const layer3Scale = isRecording ? 1 + (audioLevel * 0.35) : 1;
+
+return (
+<div
+@@ -76,144 +68,131 @@ const BubbleGradient: React.FC<BubbleGradientProps> = ({
+className="relative w-[450px] h-[450px]"
+onMouseMove={handleMouseMove}
+onMouseLeave={handleMouseLeave}
+        variants={containerVariants}
+        initial="initial"
+        whileHover="hover"
+        animate={isRecording ? 'recording' : {
+        initial={{ scale: 1 }}
+        whileHover={!isRecording ? { scale: 1.05 } : {}}
+        animate={isRecording ? {
+          scale: bubbleScale,
+        } : {
+y: ['-2%', '2%', '-2%'],
+x: ['1%', '-1%', '1%'],
+}}
+        transition={{ 
+        transition={isRecording ? { 
+          duration: 0.1 
+        } : { 
+type: 'spring', 
+stiffness: 400, 
+damping: 20,
+y: { duration: 8, repeat: Infinity, ease: 'easeInOut' },
+x: { duration: 6, repeat: Infinity, ease: 'easeInOut' },
+}}
+>
+        {/* The gradient layers WITH dynamic blur */}
+<motion.div
+className="absolute inset-0 rounded-full"
+          variants={blurVariants}
+          transition={{ duration: 0.3 }}
+          animate={isRecording ? 'recording' : 'initial'}
           animate={{
-            scale: [1, 1.05, 1],
-            opacity: [0.8, 0.9, 0.8],
+            filter: `blur(${dynamicBlur}px)`,
           }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        />
-      ) : (
-        // Recording state - Voice reactive
-        <div
-          style={{
-            position: 'relative',
-            width: '250px',
-            height: '250px',
-          }}
-        >
-          {/* Outer glow - pulses with voice */}
-          <motion.div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: '100%',
-              height: '100%',
-              transform: 'translate(-50%, -50%)',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%)',
-              filter: `blur(${voiceGlow}px)`,
-            }}
+          transition={{ duration: 0.1 }}
+>
+          {/* Layer 1: Pink - Reacts to audio */}
+<motion.div
+className="absolute w-full h-full"
+style={{
+background: 'radial-gradient(circle at 30% 30%, #E8B4BC, transparent 40%)',
+x: parallaxX1,
+y: parallaxY1,
+}}
             animate={{
-              scale: voiceScale,
-              opacity: [0.3, 0.5, 0.3],
+            animate={isRecording ? {
+              scale: layer1Scale,
+              transform: [
+                'translateX(0%) translateY(0%)', 
+                `translateX(${audioLevel * 30}%) translateY(${audioLevel * 20}%)`, 
+                'translateX(0%) translateY(0%)'
+              ],
+            } : {
+transform: ['translateX(0%) translateY(0%)', 'translateX(20%) translateY(10%)', 'translateX(0%) translateY(0%)'],
+}}
+            transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+            transition={isRecording ? {
+              scale: { duration: 0.15 },
+              transform: { duration: 0.8, ease: 'easeInOut' }
+            } : {
+              duration: 15, 
+              repeat: Infinity, 
+              ease: 'easeInOut'
             }}
-            transition={{
-              scale: { duration: 0.1 }, // Quick response to voice
-              opacity: { duration: 1, repeat: Infinity, ease: 'easeInOut' },
-            }}
-          />
+/>
 
-          {/* Gradient bubble layers - react to audio */}
-          <motion.div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: '200px',
-              height: '200px',
-              transform: 'translate(-50%, -50%)',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle at 30% 40%, #E8B4BC 0%, #D4A276 40%, #8C9091 100%)',
-              filter: `blur(${12 + smoothAudioLevel * 25}px)`,
-            }}
+          {/* Layer 2: Brown - Reacts to audio */}
+<motion.div
+className="absolute w-full h-full"
+style={{
+background: 'radial-gradient(circle at 70% 70%, #D4A276, transparent 40%)',
+x: parallaxX2,
+y: parallaxY2,
+}}
             animate={{
-              scale: 1 + smoothAudioLevel * 0.1,
-              x: smoothAudioLevel * 5,
+            animate={isRecording ? {
+              scale: layer2Scale,
+              transform: [
+                'translateX(0%) translateY(0%)', 
+                `translateX(${-audioLevel * 25}%) translateY(${-audioLevel * 18}%)`, 
+                'translateX(0%) translateY(0%)'
+              ],
+            } : {
+transform: ['translateX(0%) translateY(0%)', 'translateX(-20%) translateY(-15%)', 'translateX(0%) translateY(0%)'],
+}}
+            transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+            transition={isRecording ? {
+              scale: { duration: 0.15 },
+              transform: { duration: 1, ease: 'easeInOut' }
+            } : {
+              duration: 18, 
+              repeat: Infinity, 
+              ease: 'easeInOut', 
+              delay: 2
             }}
-            transition={{
-              duration: 0.15,
-            }}
-          />
+/>
 
-          <motion.div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: '180px',
-              height: '180px',
-              transform: 'translate(-50%, -50%)',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle at 60% 50%, #D4A276 0%, #A8B4BC 60%)',
-              filter: `blur(${15 + smoothAudioLevel * 20}px)`,
-            }}
+          {/* Layer 3: Green - Reacts to audio (most reactive) */}
+<motion.div
+className="absolute w-full h-full"
+style={{
+background: 'radial-gradient(circle at 50% 50%, #4A5C50, transparent 35%)',
+x: parallaxX3,
+y: parallaxY3,
+}}
             animate={{
-              scale: 1 + smoothAudioLevel * 0.08,
-              x: -smoothAudioLevel * 5,
-            }}
-            transition={{
-              duration: 0.15,
-            }}
-          />
+              scale: isRecording ? [1, 1.15, 1] : [1, 1.1, 1],
+            animate={isRecording ? {
+              scale: layer3Scale,
+            } : {
+              scale: [1, 1.1, 1],
+}}
+            transition={{ 
+              duration: isRecording ? 1.5 : 25, 
+            transition={isRecording ? {
+              duration: 0.12,
+            } : { 
+              duration: 25, 
+repeat: Infinity, 
+ease: 'easeInOut', 
+delay: 1 
+}}
+/>
+</motion.div>
+        
 
-          <motion.div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: '160px',
-              height: '160px',
-              transform: 'translate(-50%, -50%)',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle at 40% 60%, #8C9091 0%, #E8B4BC 50%)',
-              filter: `blur(${20 + smoothAudioLevel * 15}px)`,
-            }}
-            animate={{
-              scale: 1 + smoothAudioLevel * 0.12,
-              y: smoothAudioLevel * 3,
-            }}
-            transition={{
-              duration: 0.15,
-            }}
-          />
-
-          {/* Voice-reactive progress ring - THE KEY FEATURE! */}
-          <svg
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%) rotate(-90deg)',
-              width: '260px',
-              height: '260px',
-            }}
-          >
-            <defs>
-              {/* Glow filter for progress ring */}
-              <filter id="progressGlow">
-                <feGaussianBlur stdDeviation={voiceGlow * 0.5} result="coloredBlur" />
-                <feMerge>
-                  <feMergeNode in="coloredBlur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-
-            {/* Background ring */}
-            <circle
-              cx="130"
-              cy="130"
-              r="120"
-              fill="none"
-              stroke="rgba(255, 255, 255, 0.15)"
-              strokeWidth="2"
+        {/* Subtle outer glow during recording - no UI, just atmosphere */}
+{isRecording && (
+          <>
+            <motion.div
+              className="absolute inset-0 rounded-full border-2 border-white"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0.3, 0.7, 0.3] }}
+              transition={{ duration: 2, repeat: Infinity }}
             />
-
-            {/* Animated progress ring - reacts to voice! */}
-            <motion.circle
-              cx="130"
-              cy="130"
-              r="120"
-              fill="none"
-              stroke="rgba(255, 255, 255, 1)"
-              strokeWidth={ringThickness}
-              strokeDasharray={`${2 * Math.PI * 120}`}
-              strokeDashoffset={`${2 * Math.PI * 120 * (1 - progress / 100)}`}
-              strokeLinecap="round"
-              filter="url(#progressGlow)"
-              opacity={ringOpacity}
-              animate={{
-                scale: voiceScale,
-                strokeWidth: ringThickness,
-              }}
-              transition={{
-                scale: { duration: 0.1 },
-                strokeWidth: { duration: 0.1 },
-              }}
-              style={{
-                transformOrigin: 'center',
-              }}
-            />
-          </svg>
-
-          {/* Center pulse dot - reacts to voice */}
+            
+            {/* Recording timer */}
+            <motion.div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-4"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Microphone icon */}
+              <motion.div
+                animate={{ 
+                  scale: audioLevel > 0.1 ? 1 + audioLevel * 0.3 : 1 
+                }}
+                transition={{ duration: 0.1 }}
+              >
+                <svg
+                  width="48"
+                  height="48"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.2))' }}
+                >
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="22"></line>
+                </svg>
+              </motion.div>
+              
+              {/* Timer display */}
+              <div className="text-white text-2xl font-light tracking-widest" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                {Math.floor(recordingDuration / 60)}:{String(recordingDuration % 60).padStart(2, '0')}
+              </div>
+              
+              {/* Max duration indicator */}
+              <div className="text-white text-xs font-light opacity-60">
+                {30 - recordingDuration}s remaining
+              </div>
+              
+              {/* Audio level bars */}
+              <div className="flex gap-1">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="w-1 bg-white rounded-full"
+                    style={{ 
+                      height: '20px',
+                      opacity: audioLevel * 5 > i ? 0.8 : 0.2,
+                    }}
+                    animate={{
+                      scaleY: audioLevel * 5 > i ? [0.5, 1, 0.5] : 0.5,
+                    }}
+                    transition={{
+                      duration: 0.3,
+                      repeat: Infinity,
+                      delay: i * 0.05,
+                    }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          </>
           <motion.div
+            className="absolute inset-0 rounded-full"
             style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: '12px',
-              height: '12px',
-              transform: 'translate(-50%, -50%)',
-              borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.9)',
-              boxShadow: `0 0 ${10 + smoothAudioLevel * 20}px rgba(255, 255, 255, 0.8)`,
+              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
             }}
-            animate={{
-              scale: [1, 1 + smoothAudioLevel * 0.5, 1],
+            initial={{ opacity: 0 }}
+            animate={{ 
+              opacity: [0.2, 0.4 + (audioLevel * 0.3), 0.2],
+              scale: [1, 1.02, 1],
             }}
-            transition={{
-              duration: 0.3,
+            transition={{ 
+              duration: 0.6,
               repeat: Infinity,
               ease: 'easeInOut',
             }}
           />
-
-          {/* Time remaining indicator */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              marginTop: '90px',
-              color: 'rgba(212, 162, 118, 0.8)',
-              fontSize: '0.75rem',
-              fontWeight: 300,
-              letterSpacing: '0.1em',
-              pointerEvents: 'none',
-            }}
-          >
-            {Math.ceil((maxDuration - recordingDuration) / 1000)}s
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default BubbleGradient;
+)}
+</motion.div>
+</div>
