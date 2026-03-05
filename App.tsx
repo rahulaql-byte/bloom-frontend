@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import ParticleCanvas from './components/ParticleCanvas';
 import Garden from './components/Garden';
 import FogReveal from './components/FogReveal';
-import BreathingTransition from './components/BreathingTransition';  // ← ADDED
 import useSmoothMouse from './hooks/useSmoothMouse';
 
 // Helper for linear interpolation to create the smooth trailing effect
@@ -52,15 +51,13 @@ const App: React.FC = () => {
   
   // Transition animation state
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [showBreathingTransition, setShowBreathingTransition] = useState(false);  // ← ADDED
   const [showGarden, setShowGarden] = useState(false);
 
-  // Handle entering the garden with breathing transition
+  // Handle entering the garden with bloom outward transition
   const handleEnterGarden = () => {
     if (isTransitioning) return; // Prevent double-click
     
     setIsTransitioning(true);
-    setShowBreathingTransition(true);  // ← ADDED: Show breathing transition
     
     // Fade out audio
     const audio = audioRef.current;
@@ -82,12 +79,16 @@ const App: React.FC = () => {
         }
       }, interval);
     }
-  };
-
-  // Handle breathing transition complete
-  const handleBreathingComplete = () => {  // ← ADDED
-    setShowBreathingTransition(false);
-    setShowGarden(true);
+    
+    // Sequence:
+    // 0.0s-1.0s - Particles gather (hold)
+    // 1.0s-1.5s - Brief pause at peak gathering (the "hold" moment)
+    // 1.5s-3.5s - Burst outward (release)
+    // 2.0s-4.0s - Fade to garden gradient
+    // 4.0s - Show garden
+    setTimeout(() => {
+      setShowGarden(true);
+    }, 4000);
   };
 
   // Effect to track real mouse position and first interaction
@@ -266,15 +267,6 @@ const App: React.FC = () => {
 
   return (
     <>
-      {/* ========== BREATHING TRANSITION ========== */}
-      {showBreathingTransition && (
-        <BreathingTransition 
-          onComplete={handleBreathingComplete}
-          duration={2500}
-        />
-      )}
-      {/* ========================================== */}
-
       {showGarden ? (
         <main className="relative w-screen h-screen overflow-hidden bg-[#F5E6D3]">
           <Garden />
@@ -334,7 +326,7 @@ const App: React.FC = () => {
       {/* Sound Toggle Button - Touch-friendly size */}
       <button
         onClick={() => setIsMuted(prev => !prev)}
-        className="absolute top-4 right-4 md:top-6 md:right-6 z-50 text-[#5a524c] p-4 md:p-3 rounded-full hover:bg-[#d9d4cc]/50 active:bg-[#d9d4cc]/60 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#c7bcaf]"
+        className="absolute top-4 right-4 md:top-6 md:right-6 z-50 text-[#5a524c] p-4 md:p-3 rounded-full hover:bg-[#d9d4cc]/50 active:bg-[#d9d4cc]/60 transition-colors duration-300 focus:outline-none focus:outline-none focus:ring-2 focus:ring-[#c7bcaf]"
         aria-label={isMuted ? "Unmute sound" : "Mute sound"}
       >
         {isMuted ? (
@@ -349,6 +341,21 @@ const App: React.FC = () => {
         className="custom-cursor"
         style={{ left: `${realMousePosition.x}px`, top: `${realMousePosition.y}px` }}
       />
+
+      {/* Transition Overlay - Garden gradient colors */}
+      {isTransitioning && (
+        <div
+          className="transition-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'linear-gradient(180deg, #b8c8d8 0%, #d8c4c8 40%, #e8d4c8 70%, #e8d0c4 100%)',
+            zIndex: 10000,
+            pointerEvents: 'none',
+            animation: 'fadeInOverlay 4s ease-out forwards',
+          }}
+        />
+      )}
         </div>
       )}
     </>
