@@ -144,7 +144,7 @@ const Garden: React.FC = () => {
 
       const material = new THREE.PointsMaterial({
         color: 0xf5e8dc,
-        size: Math.random() * 0.05 + 0.02,
+        size: Math.random() * 0.03 + 0.01,
         transparent: true,
         opacity: Math.random() * 0.3 + 0.1,
         blending: THREE.AdditiveBlending,
