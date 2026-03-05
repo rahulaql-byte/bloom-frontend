@@ -143,8 +143,8 @@ const Garden: React.FC = () => {
       geometry.setAttribute('position', new THREE.BufferAttribute(position, 3));
 
       const material = new THREE.PointsMaterial({
-        color: 0xffffff,
-        size: Math.random() * 0.03 + 0.01,
+        color: 0xf5e8dc,
+        size: Math.random() * 0.05 + 0.02,
         transparent: true,
         opacity: Math.random() * 0.3 + 0.1,
         blending: THREE.AdditiveBlending,
