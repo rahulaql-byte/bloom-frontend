@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface FlowerPageProps {
-  flowerData: {
+  flowerData?: {
     flower_image: string;
     poem: string;
     emotion: string;
@@ -10,6 +10,49 @@ interface FlowerPageProps {
 }
 
 export default function FlowerPage({ flowerData }: FlowerPageProps) {
+  // LOADING STATE - Show while waiting for data
+  if (!flowerData) {
+    return (
+      <div style={{
+        width: '100vw',
+        height: '100vh',
+        background: 'linear-gradient(180deg, #b8c8d8 0%, #d8c4c8 40%, #e8d4c8 70%, #e8d0c4 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#d4a574',
+        fontSize: '1.2rem',
+      }}>
+        Loading your flower...
+      </div>
+    );
+  }
+
+  // ERROR STATE - Show if image is missing
+  if (!flowerData.flower_image) {
+    return (
+      <div style={{
+        width: '100vw',
+        height: '100vh',
+        background: 'linear-gradient(180deg, #b8c8d8 0%, #d8c4c8 40%, #e8d4c8 70%, #e8d0c4 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        color: '#d4a574',
+        fontSize: '1.2rem',
+        padding: '2rem',
+        textAlign: 'center',
+      }}>
+        <p>Error generating flower image</p>
+        <p style={{ fontSize: '0.9rem', opacity: 0.7, marginTop: '1rem' }}>
+          {flowerData.poem || 'Please try recording again'}
+        </p>
+      </div>
+    );
+  }
+
+  // MAIN RENDER - Show flower when data is ready
   return (
     <div style={{
       width: '100vw',
@@ -42,6 +85,10 @@ export default function FlowerPage({ flowerData }: FlowerPageProps) {
             objectFit: 'contain',
             objectPosition: 'top center',
           }}
+          onError={(e) => {
+            console.error('Flower image failed to load:', flowerData.flower_image);
+            e.currentTarget.style.display = 'none';
+          }}
         />
       </div>
 
@@ -59,12 +106,12 @@ export default function FlowerPage({ flowerData }: FlowerPageProps) {
         padding: '0 2rem',
         zIndex: 2,
       }}>
-        {flowerData.poem.split('\n').map((line, i) => (
+        {flowerData.poem?.split('\n').map((line, i) => (
           <p key={i} style={{ margin: '0.5rem 0' }}>{line}</p>
         ))}
       </div>
 
-      {/* Emotion Label (optional) */}
+      {/* Emotion Label */}
       <div style={{
         position: 'absolute',
         top: '10%',
