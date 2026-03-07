@@ -14,12 +14,7 @@ const Garden: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showFlowerPage, setShowFlowerPage] = useState(false);
-  const [flowerData, setFlowerData] = useState<{
-    emotion: 'tenderness' | 'contentment' | 'growth' | 'warmth' | 'tranquility';
-    poem: string;
-    transcript?: string;
-    flowerImage?: string;
-  } | null>(null);
+  const [flowerData, setFlowerData] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
   const sessionId = useSessionId();
@@ -59,13 +54,8 @@ const Garden: React.FC = () => {
         const result = await response.json();
         console.log('Backend response:', result);
         
-        setFlowerData({
-          emotion: result.emotion,
-          poem: result.poem,
-          transcript: result.transcript,
-          flowerImage: result.flower_image,
-        });
-        
+        // Store the complete backend response
+        setFlowerData(result);
         setIsProcessing(false);
         setShowFlowerPage(true);
         
@@ -85,6 +75,7 @@ const Garden: React.FC = () => {
   const handleReturnToGarden = () => {
     setShowFlowerPage(false);
     setFlowerData(null);
+    setIsRecording(false);
   };
 
   useEffect(() => {
@@ -342,7 +333,7 @@ const Garden: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {showBubble && (
+      {showBubble && !showFlowerPage && (
         <BubbleGradient 
           onBubbleClick={handleBubbleClick}
           isRecording={isRecording}
@@ -354,13 +345,7 @@ const Garden: React.FC = () => {
       {isProcessing && <LoadingAnimation />}
 
       {showFlowerPage && flowerData && (
-        <FlowerPage
-          emotion={flowerData.emotion}
-          poem={flowerData.poem}
-          transcript={flowerData.transcript}
-          flowerImage={flowerData.flowerImage}
-          onReturn={handleReturnToGarden}
-        />
+        <FlowerPage flowerData={flowerData} onReturn={handleReturnToGarden} />
       )}
       
       <style>{`
