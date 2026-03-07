@@ -1,15 +1,16 @@
 import React from 'react';
 
 interface FlowerPageProps {
-  flowerData?: {
-    flower_image: string;
-    poem: string;
+  flowerData: {
     emotion: string;
-    transcript: string;
+    poem: string;
+    transcript?: string;
+    flower_image?: string;
   };
+  onReturn: () => void;
 }
 
-export default function FlowerPage({ flowerData }: FlowerPageProps) {
+export default function FlowerPage({ flowerData, onReturn }: FlowerPageProps) {
   // LOADING STATE - Show while waiting for data
   if (!flowerData) {
     return (
@@ -43,11 +44,26 @@ export default function FlowerPage({ flowerData }: FlowerPageProps) {
         fontSize: '1.2rem',
         padding: '2rem',
         textAlign: 'center',
+        gap: '2rem',
       }}>
         <p>Error generating flower image</p>
-        <p style={{ fontSize: '0.9rem', opacity: 0.7, marginTop: '1rem' }}>
+        <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>
           {flowerData.poem || 'Please try recording again'}
         </p>
+        <button
+          onClick={onReturn}
+          style={{
+            padding: '0.75rem 2rem',
+            background: 'transparent',
+            border: '1px solid #d4a574',
+            color: '#d4a574',
+            fontSize: '1rem',
+            cursor: 'pointer',
+            borderRadius: '50px',
+          }}
+        >
+          Return to Garden
+        </button>
       </div>
     );
   }
@@ -125,6 +141,36 @@ export default function FlowerPage({ flowerData }: FlowerPageProps) {
       }}>
         {flowerData.emotion}
       </div>
+
+      {/* Return Button */}
+      <button
+        onClick={onReturn}
+        style={{
+          position: 'absolute',
+          bottom: '5%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          padding: '0.75rem 2rem',
+          background: 'transparent',
+          border: '1px solid #d4a574',
+          color: '#d4a574',
+          fontSize: '1rem',
+          cursor: 'pointer',
+          borderRadius: '50px',
+          zIndex: 3,
+          transition: 'all 0.3s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = '#d4a574';
+          e.currentTarget.style.color = '#fff';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = '#d4a574';
+        }}
+      >
+        Return to Garden
+      </button>
 
     </div>
   );
